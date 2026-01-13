@@ -13,6 +13,21 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Debug Folder Structure
+      run: |
+        echo "=== Current Directory ==="
+        pwd
+        ls -la
+        echo ""
+        echo "=== Checking html-docker-test ==="
+        ls -la html-docker-test/
+        echo ""
+        echo "=== Checking for Dockerfile ==="
+        find . -name "Dockerfile" -type f
+        echo ""
+        echo "=== Full tree structure ==="
+        find . -type f | sort
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
@@ -25,8 +40,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./html-docker-test  # Point to the folder containing Dockerfile
+        context: .  # Root as context
+        dockerfile: html-docker-test/Dockerfile  # Explicit path to Dockerfile
         push: true
         tags: ${{ secrets.DOCKER_USERNAME }}/html-test:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
