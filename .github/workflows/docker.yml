@@ -1,4 +1,4 @@
-name: Build and Push HTML Docker Image
+name: Debug Docker Build
 
 on:
   push:
@@ -6,41 +6,77 @@ on:
       - main
 
 jobs:
-  build:
+  debug:
     runs-on: ubuntu-latest
-
+    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-
-    - name: Debug Folder Structure
+      
+    - name: Debug Everything
       run: |
-        echo "=== Current Directory ==="
+        echo "=== STEP 1: Current directory ==="
         pwd
+        echo ""
+        
+        echo "=== STEP 2: List all files and folders ==="
         ls -la
         echo ""
-        echo "=== Checking html-docker-test ==="
-        ls -la html-docker-test/
+        
+        echo "=== STEP 3: Check html-docker-test specifically ==="
+        if [ -d "html-docker-test" ]; then
+          echo "✓ html-docker-test folder exists"
+          ls -la html-docker-test/
+          echo ""
+          echo "Checking for Dockerfile in html-docker-test:"
+          if [ -f "html-docker-test/Dockerfile" ]; then
+            echo "✓ Dockerfile exists in html-docker-test"
+            echo "First few lines of Dockerfile:"
+            head -5 html-docker-test/Dockerfile
+          else
+            echo "✗ Dockerfile NOT found in html-docker-test"
+            echo "Files in html-docker-test:"
+            ls -la html-docker-test/
+          fi
+        else
+          echo "✗ html-docker-test folder does NOT exist"
+          echo "Actual folders:"
+          find . -type d -name "*docker*" -o -name "*Docker*"
+        fi
         echo ""
-        echo "=== Checking for Dockerfile ==="
-        find . -name "Dockerfile" -type f
+        
+        echo "=== STEP 4: Search for Dockerfile anywhere ==="
+        find . -type f -name "Dockerfile" -o -name "dockerfile" -o -name "*.dockerfile"
         echo ""
-        echo "=== Full tree structure ==="
-        find . -type f | sort
+        
+        echo "=== STEP 5: Check file permissions ==="
+        if [ -f "html-docker-test/Dockerfile" ]; then
+          ls -la html-docker-test/Dockerfile
+          echo "File content (first 10 lines):"
+          head -10 html-docker-test/Dockerfile
+        fi
+        echo ""
+        
+        echo "=== STEP 6: Try manual build ==="
+        if [ -f "html-docker-test/Dockerfile" ]; then
+          echo "Attempting docker build from html-docker-test:"
+          cd html-docker-test
+          docker build --no-cache -t test .
+          cd ..
+        fi
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .  # Root as context
-        dockerfile: html-docker-test/Dockerfile  # Explicit path to Dockerfile
-        push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/html-test:latest
+    - name: Test Build with Different Paths
+      run: |
+        echo "=== Testing different build approaches ==="
+        
+        # Approach 1: Using explicit dockerfile path
+        echo "1. Building with explicit Dockerfile path:"
+        docker build -f html-docker-test/Dockerfile -t test1 .
+        
+        # Approach 2: Changing to directory
+        echo "2. Building from html-docker-test directory:"
+        (cd html-docker-test && docker build -t test2 .)
+        
+        # Approach 3: Using different context
+        echo "3. Building with html-docker-test as context:"
+        docker build -t test3 html-docker-test
